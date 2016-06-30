@@ -1,0 +1,20 @@
+{
+  "development": {
+    "user": [
+      {
+        "id": "persist",
+        "time": "1 */5 * * * *",
+        "action": "dataCron.persist"
+      }
+    ]
+  },
+  "production": {
+    "user": [
+      {
+        "id": "persist",
+        "time": "1 */5 * * * *",
+        "action": "dataCron.persist"
+      }
+    ]
+  }
+}
