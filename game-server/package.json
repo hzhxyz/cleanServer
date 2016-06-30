@@ -17,6 +17,7 @@
 		"pomelo-data-plugin":"0.1.1",
 		"pomelo-logger":"0.1.7",
 		"pomelo-scheduler":"0.5.0",
-		"querystring":"0.2.0"
+		"querystring":"0.2.0",
+		"pomelo-sync-plugin":"0.0.2"
 	}
 }
