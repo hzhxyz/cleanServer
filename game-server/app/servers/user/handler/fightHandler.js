@@ -13,8 +13,8 @@ handler.on = function(msg, session, next){
     var route = msg.msg;
     var self = this;
     switch(route){
-        case 'register':
-            self.register(msg,session,next);
+        case 'updatefightcfg':
+            self.updatefightcfg(msg,session,next);
             return;
     }
 };
@@ -176,10 +176,10 @@ handler.startFight = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
         var levelId = msg.levelId;
-        var level = dataRemote.getItem(consts.schema.LEVEL,levelId,null);
+        var level = utils.getItem(consts.schema.LEVEL,levelId,self,null);
         if(level){
             var role = dataRemote.getRole(rid,null);
             for(var i = 0; i < role.fightcfg.stone.length;i++){
@@ -231,32 +231,13 @@ handler.startFight = function(msg, session, next){
 };
 
 /**
- * 普通关卡战斗进行
- * */
-handler.fightProcess = function(msg, session, next){
-    var route = msg.msg;
-    msg = msg.data;
-    var self = this;
-    var rid = self.app.get(consts.sys.RID);
-    if(msg.check==0){
-    }else{
-        next(null,{
-            msg:route,
-            code:consts.code.E_CHECK,
-            data:null
-        });
-    }
-};
-
-/**
  * 普通关卡战斗结算
- * TODO
  * */
 handler.fightResult = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
     }else{
         next(null,{
@@ -274,7 +255,7 @@ handler.startPlunder = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
     }else{
         next(null,{
@@ -292,7 +273,7 @@ handler.plunderResult = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
     }else{
         next(null,{
@@ -310,7 +291,7 @@ handler.startsFight = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
     }else{
         next(null,{
@@ -328,7 +309,7 @@ handler.sfightResult = function(msg, session, next){
     var route = msg.msg;
     msg = msg.data;
     var self = this;
-    var rid = self.app.get(consts.sys.RID);
+    var rid = session.get(consts.sys.RID);
     if(msg.check==0){
     }else{
         next(null,{

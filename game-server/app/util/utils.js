@@ -560,3 +560,28 @@ utils.getRand = function(){
     var rand = parseInt(Math.acos(Math.random())*180/Math.PI);
     return rand;
 };
+
+/**
+ * 获取某张配置表
+ * */
+var getTemplate = function(tab,self,cb){
+    var cfg = self.app.get(tab);
+    if(cb){
+        utils.invokeCallback(cb, cfg);
+    }else{
+        return cfg;
+    }
+};
+
+/*
+ * 获取配置表中某条数据
+ * */
+var getItem = function(tab,id,self,cb){
+    var cfg = self.app.get(tab);
+    var item = cfg[id];
+    if(cb){
+        utils.invokeCallback(cb,item);
+    }else{
+        return item;
+    }
+};

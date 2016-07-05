@@ -72,15 +72,18 @@ handler.compoundStone = function(msg, session, next){
     if(msg.check==0){
         var formulaId = msg.formulaId;
         var activator = msg.activator;
-        var formula = getItem(consts.schema.MAGICSTONECOMPOUND,formulaId,self,null);
+        var formula = utils.getItem(consts.schema.MAGICSTONECOMPOUND,formulaId,self,null);
         if(formula){
             self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
                 var pro = parseInt(formula.pro);
                 if(activator){
-                    var material = getItem(consts.schema.MATERIAL,activator,self,null);
+                    var material = utils.getItem(consts.schema.MATERIAL,activator,self,null);
                     if(material&&role.res.material[activator]&&role.res.material[activator].num>0){
                         pro = pro+parseInt(material.addPro);
                         role.res.material[activator].num = role.res.material[activator].num-1;
+                        if(role.res.material[activator].num==0){
+                            delete role.res.material[activator];
+                        }
                     }
                 }
                 pro = pro/100;
@@ -122,6 +125,9 @@ handler.compoundStone = function(msg, session, next){
                             return;
                         }else{
                             r[f.substr(4)].num = r[f.substr(4)].num - num;
+                            if(r[f.substr(4)].num==0){
+                                delete r[f.substr(4)];
+                            }
                             role.res[res] = r;
                         }
                     }
@@ -175,8 +181,8 @@ handler.alchemyStone = function(msg, session, next){
             if(stone){
                 var exp = stone.starexp;
                 var star = stone.star;
-                var material = getTemplate(consts.schema.MATERIAL,self,null);
-                var pet = getTemplate(consts.schema.PET,self,null);
+                var material = utils.getTemplate(consts.schema.MATERIAL,self,null);
+                var pet = utils.getTemplate(consts.schema.PET,self,null);
                 for(var i = 0; i < data.material.length; i++){//校验素材是否足够
                     var type = data.material[i].type;
                     var num = data.material[i].num;
@@ -189,6 +195,9 @@ handler.alchemyStone = function(msg, session, next){
                         return;
                     }else{
                         role.res.material[type].num = role.res.material[type].num - num;
+                        if(role.res.material[type].num==0){
+                            delete role.res.material[type];
+                        }
                         exp = exp+parseInt(material[type].exp)*num;
                     }
                 }
@@ -207,7 +216,7 @@ handler.alchemyStone = function(msg, session, next){
                         role.res.pet = role.res.pet.splice(index,1);
                     }
                 }
-                var formula = getItem(consts.schema.MAGICRISESTAR,stone.type,self,null);
+                var formula = utils.getItem(consts.schema.MAGICRISESTAR,stone.type,self,null);
                 for(var i = star+1; i < 6; i++){
                     var nextexp = parseInt(formula['star'+i]);
                     if(exp>=nextexp){
@@ -265,7 +274,7 @@ handler.advancedStone = function(msg, session, next){
         var stoneId = msg.stoneId;
         var activator = msg.activator;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var formula = getItem(consts.schema.MAGICADVANCE,formulaId,self,null);
+            var formula = utils.getItem(consts.schema.MAGICADVANCE,formulaId,self,null);
             var stone = role.res.stone[stoneId-1];
             if(stone&&formula&&stone.type==formula.formid&&role.role.grade>=formula.grade){
                 var pro = parseInt(formula.pro);
@@ -300,15 +309,21 @@ handler.advancedStone = function(msg, session, next){
                             return;
                         }else{
                             r[good.substr(4,4)].num = r[good.substr(4,4)].num - num;
+                            if(r[good.substr(4,4)].num==0){
+                                delete r[good.substr(4,4)];
+                            }
                             role.res[res] = r;
                         }
                     }
                 }
                 if(activator){
-                    var material = getItem(consts.schema.MATERIAL,activator,self,null);
+                    var material = utils.getItem(consts.schema.MATERIAL,activator,self,null);
                     if(material&&role.res.material[activator]&&role.res.material[activator].num>0){
                         pro = pro + parseInt(material.addPro);
                         role.res.material[activator].num = role.res.material[activator].num - 1;
+                        if(role.res.material[activator].num==0){
+                            delete role.res.material[activator];
+                        }
                     }
                 }
                 var rand = Math.random();
@@ -359,7 +374,7 @@ handler.runeStone = function(msg, session, next){
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             var stone = role.res.stone[stoneId-1];
-            var materials = getTemplate(consts.schema.MATERIAL,self,null);
+            var materials = utils.getTemplate(consts.schema.MATERIAL,self,null);
             if(stone){
                 var rune = materials[data[0].type].attr;
                 for(var i = 0; i < data.length; i++){
@@ -367,6 +382,9 @@ handler.runeStone = function(msg, session, next){
                     if(rune==materials[m.type].attr){
                         if(role.res.material[m.type].num>=m.num){
                             role.res.material[m.type].num = role.res.material[m.type].num - m.num;
+                            if(role.res.material[m.type].num==0){
+                                delete role.res.material[m.type];
+                            }
                         }else{
                             next(null,{
                                 msg:route,
@@ -444,7 +462,7 @@ handler.resolveStone = function(msg, session, next){
                     });
                     return;
                 }
-                var formula = getItem(consts.schema.MAGICSTONERESOLVE,stone.type,self,null);
+                var formula = utils.getItem(consts.schema.MAGICSTONERESOLVE,stone.type,self,null);
                 for(var i = 1; i < 6; i++){
                     var r = formula['r'+i];
                     var n = formula['n'+i];
@@ -531,8 +549,8 @@ handler.feedPet = function(msg, session, next){
             if(pet){
                 var level = pet.level;
                 var exp = pet.exp;
-                var material = getTemplate(consts.schema.MATERIAL,self,null);
-                var stone = getTemplate(consts.schema.MAGICSTONEINFO,self,null);
+                var material = utils.getTemplate(consts.schema.MATERIAL,self,null);
+                var stone = utils.getTemplate(consts.schema.MAGICSTONEINFO,self,null);
                 for(var i = 0; i < data.material.length; i++){
                     var type = data.material[i].type;
                     var num = data.material[i].num;
@@ -545,6 +563,9 @@ handler.feedPet = function(msg, session, next){
                         return;
                     }else{
                         role.res.material[type].num = role.res.material[type].num - num;
+                        if(role.res.material[type].num==0){
+                            delete role.res.material[type];
+                        }
                         exp = exp+parseInt(material[type].exp)*num;
                     }
                 }
@@ -563,9 +584,9 @@ handler.feedPet = function(msg, session, next){
                         role.res.stone = role.res.stone.splice(id,1);
                     }
                 }
-                var formula = getItem(consts.schema.PET,pet.type,self,null);
+                var formula = utils.getItem(consts.schema.PET,pet.type,self,null);
                 var tid = formula.lvupID;
-                var petlvup = getTemplate(consts.schema.PETLVUP,self,null);
+                var petlvup = utils.getTemplate(consts.schema.PETLVUP,self,null);
                 var id = tid+''+level;
                 while(exp>=petlvup[id].lvexp&&level<51){
                     exp = exp - petlvup[id].lvexp;
@@ -614,7 +635,7 @@ handler.advancedPet = function(msg, session, next){
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             var pet = role.res.pet[petId-1];
             if(pet){
-                var formula = getItem(consts.schema.PETADVANCE,formulaId,self,null);
+                var formula = utils.getItem(consts.schema.PETADVANCE,formulaId,self,null);
                 if(pet.type==formula.formid&&role.role.grade>=formula.grade&&pet.level>=formula.advanceLv){
                     var pro = parseInt(formula.pro);
                     for(var i = 1; i < 5; i++){
@@ -637,6 +658,9 @@ handler.advancedPet = function(msg, session, next){
                         var r = role.res[res];
                         if(r[good.substr(4,4)].num>=n){
                             r[good.substr(4,4)].num = r[good.substr(4,4)].num - n;
+                            if(r[good.substr(4,4)].num==0){
+                                delete r[good.substr(4,4)];
+                            }
                             role.res[res] = r;
                         }else{
                             next(null,{
@@ -648,9 +672,12 @@ handler.advancedPet = function(msg, session, next){
                         }
                     }
                     if(activator){
-                        var material = getItem(consts.schema.MATERIAL,activator,self,null);
+                        var material = utils.getItem(consts.schema.MATERIAL,activator,self,null);
                         if(material&&role.res.material[activator]&&role.res.material[activator].num>0){
                             role.res.material[activator].num = role.res.material[activator].num - 1;
+                            if(role.res.material[activator].num==0){
+                                delete role.res.material[activator];
+                            }
                             pro = pro+parseInt(material.addPro);
                         }
                     }
@@ -707,7 +734,7 @@ handler.runePet = function(msg, session, next){
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             var pet = role.res.pet[petId-1];
-            var materials = getTemplate(consts.schema.MATERIAL,self,null);
+            var materials = utils.getTemplate(consts.schema.MATERIAL,self,null);
             if(pet){
                 var rune = materials[data[0].type].attr;
                 for(var i = 0; i < data.length; i++){
@@ -715,6 +742,9 @@ handler.runePet = function(msg, session, next){
                     if(rune==materials[m.type].attr){
                         if(role.res.material[m.type].num>=m.num){
                             role.res.material[m.type].num = role.res.material[m.type].num - m.num;
+                            if(role.res.material[m.type].num==0){
+                                delete role.res.material[m.type];
+                            }
                         }else{
                             next(null,{
                                 msg:route,
@@ -1163,30 +1193,5 @@ handler.getRes = function(msg, session, next){
             code:consts.code.E_CHECK,
             data:null
         });
-    }
-};
-
-/**
- * 获取某张配置表
- * */
-var getTemplate = function(tab,self,cb){
-    var cfg = self.app.get(tab);
-    if(cb){
-        utils.invokeCallback(cb, cfg);
-    }else{
-        return cfg;
-    }
-};
-
-/*
- * 获取配置表中某条数据
- * */
-var getItem = function(tab,id,self,cb){
-    var cfg = self.app.get(tab);
-    var item = cfg[id];
-    if(cb){
-        utils.invokeCallback(cb,item);
-    }else{
-        return item;
     }
 };

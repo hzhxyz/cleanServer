@@ -590,7 +590,7 @@ remote.sendMessage = function(msg,cb){
     utils.invokeCallback(cb);
 };
 
-//--------------------缓存数据
+//--------------------缓存数据----------
 
 remote.addToken = function(uid,token,cb){
     var tokens = this.app.get(consts.cache.TOKEN);
@@ -771,7 +771,7 @@ remote.getItem = function(tab,id,cb){
 };
 
 
-//--------------------------------------
+//-----------------------------调试---------
 
 remote.getCache = function(tab,cb){
     var cache = this.app.get(tab);
