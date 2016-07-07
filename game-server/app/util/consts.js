@@ -1,3 +1,6 @@
+//建议所有缓存数据使用Long型表示，方便计算；
+//所有持久化数据使用yyyy-MM-dd HH:mm:ss表示，方便存储；
+//缓存数据和持久化数据共用的，使用持久化数据的格式
 module.exports = {
     sys: {
         PATH: '../',
@@ -153,20 +156,6 @@ module.exports = {
         fightcfg:{
             stone:[1,2,3,4,5],
             item:[0,0,0,0]
-        },
-        res:{
-            material:{
-                '0001':{}
-            },
-            item:{
-                '0001':{}
-            },
-            stone:{
-                'adsc':{}
-            },
-            pet:{
-                'defr':{}
-            }
         }
     },
     job:{
@@ -179,6 +168,7 @@ module.exports = {
         D:3//删除
     },
     stone:{
+        id:null,
         type:'',
         star:0,
         starexp:0,
@@ -188,6 +178,7 @@ module.exports = {
         protected:0
     },
     pet:{
+        id:null,
         type:'',
         level:1,
         dispatch:0,
@@ -202,17 +193,17 @@ module.exports = {
         }
     },
     fightInfo:{
-        levelType:null,
-        level:null,
-        special:null,
-        specialMon:null,
-        role:null,//角色等级数据
-        fightcfg:null,//战术台详细信息
+        levelType:null,//关卡类型：普通关卡，特殊关卡还有掠夺等
+        level:null,//关卡详情：缓存的策划表数据，避免由于策划修改策划表，导致战斗前后数据不一致
+        special:null,//是否出现了特殊怪物，如果出现了，是僵尸还是神兽
+        specialMon:null,//特殊怪物数据详情
+        role:null,//角色当前数据，指的是role.role
+        fightcfg:null,//战术台详细信息，包含魔法石的详细数据
         matrix:null,//当前阵列
-        list:null,//所有产生的魔法石列表,
+        list:null,//所有产生的魔法石列表
         maxcombo:0,//最大连击数
-        startTime:null,
-        endTime:null
+        startTime:null,//战斗开始时间
+        endTime:null//战斗结束时间
     },
     changePass:{
         FILL:3,

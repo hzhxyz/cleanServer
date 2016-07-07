@@ -76,6 +76,19 @@ handler.on = function(msg,session,next){
         case 'updateMsg':
             self.updateMsg(msg,session,next);
             return;
+        case 'buy':
+            self.buy(msg,session,next);
+            return;
+        case 'getRoleInfo':
+            self.getRoleInfo(msg,session,next);
+            return;
+        default:
+            next(null,{
+                msg:route,
+                code:consts.code.E_CHECK,
+                data:null
+            });
+            return;
     }
 };
 
@@ -107,6 +120,9 @@ handler.confirmRole = function(msg,session,next){
             initrole.res = initbag;
             initrole.role.type = type;
             initrole.role.rolename = rolename;
+            for(var i in initbag.stone){
+                initrole.fightcfg.stone.push(i);
+            }
             self.app.rpc.user.dataRemote.addRole('1',initrole,function(res){
                 next(null,{
                     msg:route,
@@ -124,6 +140,29 @@ handler.confirmRole = function(msg,session,next){
     }
 };
 
+/**
+ * 获取用户数据时，检查通行证恢复情况，并计算倒计时
+ * */
+var checkPass = function(role){
+    var pass = role.pass;
+    var now = Date.now();
+    var diff = now - pass.pnutime;
+    var r = parseInt(diff/consts.time.passtime);
+    if(5<=r+pass.dressnum){
+        pass.dressnum = 5;
+    }else{
+        pass.dressnum = pass.dressnum+r;
+    }
+    var pnut = 0;
+    if(role.dressnum<5){
+        pnut = Math.ceil((consts.time.passtime+r*consts.time.passtime-diff)/consts.time.second);
+    }
+    pass.pnutime = pass.pnutime+r*consts.time.passtime;
+    role.pass = pass;
+    role.role.pnut = pnut;
+    return role;
+};
+
 /*
 * 用户数据初始化
 * */
@@ -135,21 +174,9 @@ handler.init = function(msg,session,next){
     if(msg.check==0){
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             if(role){
-                var pass = role.pass;
-                var now = Date.now();
-                var diff = now - pass.pnutime;
-                var r = parseInt(diff/consts.time.passtime);
-                if(5<=r+pass.dressnum){
-                    pass.dressnum = 5;
-                }else{
-                    pass.dressnum = pass.dressnum+r;
-                }
-                var pnut = 0;
-                if(role.dressnum<5){
-                    pnut = Math.ceil((consts.time.passtime+r*consts.time.passtime-diff)/consts.time.second);
-                }
-                pass.pnutime = pass.pnutime+r*consts.time.passtime;
-                role.pass = pass;
+                role = checkPass(role);
+                var pnut = role.role.pnut;
+                delete role.role.pnut;
                 self.app.rpc.user.dataRemote.updateRole('1',role,function(res){
                     role.role.pnut = pnut;
                     next(null,{
@@ -1052,4 +1079,89 @@ handler.updateMsg = function(msg,session,next){
             data:null
         });
     }
+};
+
+/**
+ * 获取角色在资料页的数据
+ * */
+handler.getRoleInfo = function(msg,session,next){
+    var route = msg.msg;
+    msg = msg.data;
+    var rid = session.get(consts.sys.RID);
+    var self = this;
+    self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
+        if(role){
+            var info = {role:null,pet:null,fightcfg:{stone:[]}};
+            info.role = role.role;
+            var pet = role.res.pet;
+            for(var i in pet){
+                if(pet[i].dispatch==consts.ny.Y){
+                    info.pet = pet[i];
+                    break;
+                }
+            }
+            var fms = role.fightcfg.stone;
+            for(var i in fms){
+                if(fms[i].isequip==consts.ny.Y){
+                    info.fightcfg.stone.push(fms[i]);
+                }
+            }
+            next(null,{
+                msg:route,
+                code:consts.code.SUCCESS,
+                data:info
+            });
+        }else{
+            next(null,{
+                msg:route,
+                code:consts.code.E_DB,
+                data:role
+            });
+        }
+    });
+};
+
+/**
+ * 用户使用元素币购买物品
+ * （一次购买一种物品）
+ * */
+handler.buy = function(msg,session,next){
+    var route = msg.msg;
+    msg = msg.data;
+    var rid = session.get(consts.sys.RID);
+    var self = this;
+    var res = msg.res;
+    var type = msg.type;
+    var num = msg.num;
+    self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
+        var gold = role.role.gold;
+        utils.getItem(consts.schema.MALL,res+''+type,self,function(item){
+            if(item){
+                var sum = num*parseInt(item.realPrice);
+                if(sum>gold){
+                    next(null,{
+                        msg:route,
+                        code:consts.code.E_DATA,
+                        data:null
+                    });
+                    return;
+                }
+                gold = gold - sum;
+                role.role.gold = gold;
+                self.app.rpc.user.dataRemote.updateRole('1',role,function(res){
+                    next(null,{
+                        msg:route,
+                        code:consts.code.SUCCESS,
+                        data:null
+                    });
+                });
+            }else{
+                next(null,{
+                    msg:route,
+                    code:consts.code.E_DATA,
+                    data:null
+                });
+            }
+        });
+    });
 };

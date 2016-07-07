@@ -1,5 +1,6 @@
 var utils = require('../../../util/utils');
 var logger = require('pomelo-logger').getLogger(__filename);
+var dao = require('../../../dao/dao.js');
 module.exports = function(app) {
     return new Filter(app);
 }
@@ -233,9 +234,15 @@ Filter.prototype.before = function (msg, session, next) {
         data.check = 1;
     }
     msg.data = data;
+    logger.info(utils.formatDate(Date.now())+' : 用户（uid为'+session.uid+',rid为'+session.get('rid')+'）的请求参数为：'+JSON.stringify(msg));
     next();
 };
 
-/*Filter.prototype.after = function (err, msg, session, resp, next) {
- };*/
-
+Filter.prototype.after = function (err, msg, session, resp, next){
+    var re = utils.clone(resp);
+    re.__route__ = msg.__route__;
+    var now = Date.now();
+    dao.insert('ldnm.act',{stime:utils.formatDate(now),act:JSON.stringify(msg),result:JSON.stringify(resp)},function(){});
+    logger.info(utils.formatDate(now)+' : 用户（uid为'+session.uid+',rid为'+session.get('rid')+'）的请求返回值为：'+JSON.stringify(re));
+    next();
+};

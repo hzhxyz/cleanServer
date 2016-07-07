@@ -63,6 +63,7 @@ app.configure('production|development', 'gate', function(){
 
 app.configure('production|development', 'user', function(){
     app.before(userFilter());
+    app.after(userFilter());
     loadData.loadAll();
 	app.set('connectorConfig',
 		{

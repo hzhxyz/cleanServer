@@ -58,6 +58,13 @@ handler.on = function(msg,session,next){
         case 'getRes':
             self.getRes(msg, session, next);
             return;
+        default:
+            next(null,{
+                msg:route,
+                code:consts.code.E_CHECK,
+                data:null
+            });
+            return;
     }
 };
 
@@ -138,7 +145,9 @@ handler.compoundStone = function(msg, session, next){
                     }else{
                         var stone = utils.clone(consts.stone);
                         stone.type = formula.id;
-                        role.res.stone.push(stone);
+                        var uuid = utils.uuidCompact().replace('-','');
+                        stone.id = uuid;
+                        role.res.stone[uuid] = stone;
                     }
                     self.app.rpc.user.dataRemote.updateRole('1',role,function(res){
                         next(null,{
@@ -177,7 +186,7 @@ handler.alchemyStone = function(msg, session, next){
         var stoneId = msg.stoneId;
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var stone = role.res.stone[stoneId-1];
+            var stone = role.res.stone[stoneId];
             if(stone){
                 var exp = stone.starexp;
                 var star = stone.star;
@@ -228,7 +237,7 @@ handler.alchemyStone = function(msg, session, next){
                 }
                 stone.star = star;
                 stone.starexp = exp;
-                role.res.stone[stoneId-1] = stone;
+                role.res.stone[stoneId] = stone;
                 self.app.rpc.user.dataRemote.updateRole('1',role,function(res){
                     if(res==consts.code.SUCCESS){
                         next(null,{
@@ -275,7 +284,7 @@ handler.advancedStone = function(msg, session, next){
         var activator = msg.activator;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             var formula = utils.getItem(consts.schema.MAGICADVANCE,formulaId,self,null);
-            var stone = role.res.stone[stoneId-1];
+            var stone = role.res.stone[stoneId];
             if(stone&&formula&&stone.type==formula.formid&&role.role.grade>=formula.grade){
                 var pro = parseInt(formula.pro);
                 for(var i = 1; i < 5; i++){
@@ -335,7 +344,7 @@ handler.advancedStone = function(msg, session, next){
                     stone.type = formula.advanceid;
                     stone.star = 0;
                     stone.starexp = 0;
-                    role.res.stone[stoneId-1] = stone;
+                    role.res.stone[stoneId] = stone;
                 }
                 self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                     next(null,{
@@ -373,7 +382,7 @@ handler.runeStone = function(msg, session, next){
         var stoneId = msg.stoneId;
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var stone = role.res.stone[stoneId-1];
+            var stone = role.res.stone[stoneId];
             var materials = utils.getTemplate(consts.schema.MATERIAL,self,null);
             if(stone){
                 var rune = materials[data[0].type].attr;
@@ -409,7 +418,7 @@ handler.runeStone = function(msg, session, next){
                         stone.runeLevel = 1;
                         stone.rune = rune;
                     }
-                    role.res.stone[stoneId-1] = stone;
+                    role.res.stone[stoneId] = stone;
                     self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                         next(null,{
                             msg:route,
@@ -452,7 +461,7 @@ handler.resolveStone = function(msg, session, next){
     if(msg.check==0){
         var stoneId = msg.stoneId;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var stone = role.res.stone[stoneId-1];
+            var stone = role.res.stone[stoneId];
             if(stone){
                 if(stone.isequip==1){
                     next(null,{
@@ -494,7 +503,7 @@ handler.resolveStone = function(msg, session, next){
                     }
                     role.res[res] = re;
                 }
-                role.res.stone = role.res.stone.splice(stoneId-1,1);
+                delete role.res.stone[stoneId];
                 self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                     next(null,{
                         msg:route,
@@ -532,7 +541,7 @@ handler.feedPet = function(msg, session, next){
         var petId = msg.petId;
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var pet = role.res.pet[petId-1];
+            var pet = role.res.pet[petId];
             var fightcfg = role.fightcfg;
             for(var i = 0; i< fightcfg.stone.length; i++){
                 for(var j = 0; j < data.stone.length; j++){
@@ -595,7 +604,7 @@ handler.feedPet = function(msg, session, next){
                 }
                 pet.level = level;
                 pet.exp = exp;
-                role.res.pet[petId-1] = pet;
+                role.res.pet[petId] = pet;
                 self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                     next(null,{
                         msg:route,
@@ -633,7 +642,7 @@ handler.advancedPet = function(msg, session, next){
         var formulaId = msg.formulaId;
         var activator = msg.activator;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var pet = role.res.pet[petId-1];
+            var pet = role.res.pet[petId];
             if(pet){
                 var formula = utils.getItem(consts.schema.PETADVANCE,formulaId,self,null);
                 if(pet.type==formula.formid&&role.role.grade>=formula.grade&&pet.level>=formula.advanceLv){
@@ -687,7 +696,7 @@ handler.advancedPet = function(msg, session, next){
                         success = consts.code.B_FAIL;
                     }else{
                         pet.type = formula.advanceid;
-                        role.res.pet[petId-1] = pet;
+                        role.res.pet[petId] = pet;
                     }
                     self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                         next(null,{
@@ -733,7 +742,7 @@ handler.runePet = function(msg, session, next){
         var petId = msg.petId;
         var data = msg.data;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var pet = role.res.pet[petId-1];
+            var pet = role.res.pet[petId];
             var materials = utils.getTemplate(consts.schema.MATERIAL,self,null);
             if(pet){
                 var rune = materials[data[0].type].attr;
@@ -784,7 +793,7 @@ handler.runePet = function(msg, session, next){
                         }
                     }
                     pet.rune = r;
-                    role.res.stone[petId-1] = pet;
+                    role.res.stone[petId] = pet;
                     self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                         next(null,{
                             msg:route,
@@ -828,17 +837,16 @@ handler.discard = function(msg, session, next){
         var res = msg.res;
         var type = msg.type;
         var id = msg.id;
-        var index = id-1;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
             var r1 = role.res[res];
             var fightcfg = role.fightcfg;
             if(consts.preid.MATERIAL==res){
                 delete r1[type];
                 role.res[type] = r1;
-            }else if(consts.preid.MAGICSTONE==res&&r1[index]&&r1[index].type==type){
+            }else if(consts.preid.MAGICSTONE==res&&r1[id]&&r1[id].type==type){
                 for(var i = 0; i < fightcfg.stone.length; i++){
                     var stone = fightcfg.stone[i];
-                    if(stone==id){
+                    if(stone.id==id){
                         next(null,{
                             msg:route,
                             code:consts.code.E_DATA,
@@ -847,7 +855,7 @@ handler.discard = function(msg, session, next){
                         return;
                     }
                 }
-                r1 = r1.splice(index,1);
+                delete r1[id];
                 role.res[res] = r1;
             }else if(consts.preid.ITEM==res&&r1[type]){
                 var num = r1[type].num;
@@ -895,7 +903,7 @@ handler.free = function(msg, session, next){
     if(msg.check==0){
         var petId = msg.petId;
         self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
-            var r = role.res.pet[petId-1];
+            var r = role.res.pet[petId];
             if(r){
                 if(r.dispatch==1){
                     next(null,{
@@ -905,7 +913,7 @@ handler.free = function(msg, session, next){
                     });
                     return;
                 }
-                role.res.pet = role.res.pet.splice(petId-1,1);
+                delete role.res.pet[petId];
             }
             self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                 next(null,{
@@ -939,7 +947,7 @@ handler.dispatch = function(msg, session, next){
             for(var i = 0; i < pet.length; i ++){
                 pet[i].dispatch = 0;
             }
-            pet[petId-1].dispatch = 1;
+            pet[petId].dispatch = 1;
             role.res.pet = pet;
             role.role.pet = petId;
             self.app.rpc.user.dataRemote.updateRole(role,function(){
@@ -1104,28 +1112,32 @@ handler.addAttachs = function(msg, session, next){
                                 if(item[r.type]){
                                     item[r.type].num = item[r.type].num+ r.num;
                                 }else{
-                                    item[r.type] = {type:r.type,num: r.num,protected:0,isequip:0};
+                                    item[r.type] = {type:r.type,num:r.num,protected:0,isequip:0};
                                 }
                                 role.res.item = item;
                             }else if(consts.preid.MATERIAL==r.res){
                                 var material = role.res.material;
                                 if(material[r.type]){
-                                    material[r.type].num = material[r.type].num+ r.num;
+                                    material[r.type].num = material[r.type].num+r.num;
                                 }else{
-                                    material[r.type] = {type:r.type,num: r.num,protected:0,isequip:0};
+                                    material[r.type] = {type:r.type,num:r.num,protected:0,isequip:0};
                                 }
                                 role.res.material = material;
                             }else if(consts.preid.MAGICSTONE==r.res){
                                 for(var i = 0; i < r.num; i++){
                                     var stone = utils.clone(consts.stone);
                                     stone.type = r.type;
-                                    role.res.stone.push(stone);
+                                    var uuid = utils.uuidCompact().replace('-','');
+                                    stone.id = uuid;
+                                    role.res.stone[uuid] = stone;
                                 }
                             }else if(consts.preid.PET==r.res){
                                 for(var i = 0; i < r.num; i++){
                                     var pet = utils.clone(consts.pet);
                                     pet.type = r.type;
-                                    role.res.pet.push(pet);
+                                    var uuid = utils.uuidCompact().replace('-','');
+                                    pet.id = uuid;
+                                    role.res.pet[uuid] = pet;
                                 }
                             }else{
                                 next(null,{

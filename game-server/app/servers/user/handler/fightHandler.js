@@ -1,7 +1,6 @@
 var logger = require('pomelo-logger').getLogger(__filename);
 var consts = require('../../../util/consts');
 var utils = require('../../../util/utils');
-var dataRemote = require('../remote/dataRemote');
 module.exports = function(app) {
     return new Handler(app);
 };
@@ -15,6 +14,13 @@ handler.on = function(msg, session, next){
     switch(route){
         case 'updatefightcfg':
             self.updatefightcfg(msg,session,next);
+            return;
+        default:
+            next(null,{
+                msg:route,
+                code:consts.code.E_CHECK,
+                data:null
+            });
             return;
     }
 };
@@ -31,15 +37,17 @@ handler.updatefightcfg = function(msg, session, next){
         var fcfg = msg.fightcfg;
         var stone = fcfg.stone;
         var item = fcfg.item;
-        var role = dataRemote.getRole(rid,null);
-        var fightcfg = role.fightcfg;
-        var res = role.res;
-        //战术台校验开始
-        var colors = [];
-        for(var i = 0; i < stone.length; i++){
-            var stoneIndex = stone[i]-1;
-            if(stoneIndex<res.stone.length&&stoneIndex>-1){
-                var color = res.stone[stoneIndex].type.substr(0,2);
+        self.app.rpc.user.dataRemote.getRole('1',rid,function(role){
+            var fightcfg = role.fightcfg;
+            var res = role.res;
+            //战术台校验开始
+            var colors = [];
+            for(var i = 0; i < stone.length; i++){
+                var stoneId = stone[i];
+                if(!stoneId){
+                    continue;
+                }
+                var color = res.stone[stoneId].type.substr(0,2);
                 color = parseInt(color);
                 if(colors[color]){
                     next(null,{
@@ -51,71 +59,72 @@ handler.updatefightcfg = function(msg, session, next){
                 }else{
                     colors[color] = color;
                 }
-            }else{
-                next(null,{
-                    msg:route,
-                    code:consts.code.E_DATA,
-                    data:null
-                });
-                return;
             }
-        }
-        for(var i = 0; i < fightcfg.item.length; i++){
-            var type = fightcfg.item[i];
-            if(!type){
-                continue;
-            }
-            if(!res.item[type]){
-                res.item[type] = {type:type,num:0,isequip:0,protected:0};
-            }
-            fightcfg.item[i] = 0;
-            res.item[type].num = res.item[type].num + 1;
-            role.res = res;
-        }
-        //战术台校验结束
-        for(var i = 0; i < stone.length; i++){
-            var stoneId = stone[i];
-            if(fightcfg.stone[i]!=0&&stoneId!=0){
-                res.stone[fightcfg.stone[i]-1].isequip = 0;
-                res.stone[stoneId-1].isequip = 1;
-                fightcfg.stone[i] = stoneId;
-                role.res = res;
-            }else{
-                next(null,{
-                    msg:route,
-                    code:consts.code.E_DATA,
-                    data:null
-                });
-                return;
-            }
-        }
-        for(var i = 0; i < item.length; i++){
-            var type = item[i];
-            if(!type){
-                continue;
-            }
-            if(res.item[type]&&res.item[type].num>0){
-                res.item[type].num = res.item[type].num -1;
-                if(res.item[type].num==0){
-                    res.item[type] = undefined;
+            for(var i = 0; i < fightcfg.stone.length; i++){
+                var stoneId = fightcfg.stone[i];
+                if(!stoneId){
+                    continue;
                 }
-                role.res = res;
-                fightcfg.item[i] = type;
-            }else{
+                res.stone[stoneId].isequip = 0;
+                fightcfg.stone[i] = 0;
+            }
+            for(var i = 0; i < fightcfg.item.length; i++){
+                var type = fightcfg.item[i];
+                if(!type){
+                    continue;
+                }
+                if(!res.item[type]){
+                    res.item[type] = {type:type,num:0,isequip:0,protected:0};
+                }
+                fightcfg.item[i] = 0;
+                res.item[type].num = res.item[type].num + 1;
+            }
+            //战术台校验结束
+            for(var i = 0; i < stone.length; i++){
+                var stoneId = stone[i];
+                if(stoneId){
+                    if(res.stone[stoneId]){
+                        res.stone[stoneId].isequip = 1;
+                    }else{
+                        next(null,{
+                            msg:route,
+                            code:consts.code.E_DATA,
+                            data:null
+                        });
+                        return;
+                    }
+                }
+                fightcfg.stone[i] = stoneId;
+            }
+            for(var i = 0; i < item.length; i++){
+                var type = item[i];
+                if(!type){
+                    continue;
+                }
+                if(res.item[type]&&res.item[type].num>0){
+                    res.item[type].num = res.item[type].num -1;
+                    if(res.item[type].num==0){
+                        res.item[type] = undefined;
+                    }
+                    fightcfg.item[i] = type;
+                }else{
+                    next(null,{
+                        msg:route,
+                        code:consts.code.E_DATA,
+                        data:null
+                    });
+                    return;
+                }
+            }
+            role.res = res;
+            role.fightcfg = fightcfg;
+            self.app.rpc.user.dataRemote.updateRole('1',role,function(){
                 next(null,{
                     msg:route,
-                    code:consts.code.E_DATA,
+                    code:consts.code.SUCCESS,
                     data:null
                 });
-                return;
-            }
-        }
-        role.fightcfg = fightcfg;
-        dataRemote.updateRole(role,null);
-        next(null,{
-            msg:route,
-            code:consts.code.SUCCESS,
-            data:null
+            });
         });
     }else{
         next(null,{
@@ -129,44 +138,51 @@ handler.updatefightcfg = function(msg, session, next){
 /**
  * 创建战斗数据
  * */
-var createFight = function(role){
-    var roleInfo = dataRemote.getRoleInfo(role.id,null);
-    roleInfo.fight = utils.clone(consts.fightInfo);
-    var fight = roleInfo.fight;
-    fight.role = role.role;
-    fight.startTime = Date.now();
-    var stone = role.res.stone;
-    var fightcfg = {
-        stone:[0,0,0,0,0],
-        item:[0,0,0,0]
-    };
-    for(var i = 0; i < role.fightcfg.stone.length; i++){
-        var stoneIndex = role.fightcfg.stone[i]-1;
-        if(stoneIndex>=stone.length){
-            return null;
-        }else{
-            fightcfg.stone.push(stone[stoneIndex]);
+var createFight = function(role,self,cb){
+    self.app.rpc.user.dataRemote.getRoleInfo('1',role.id,function(roleInfo){
+        if(!roleInfo){
+            utils.invokeCallback(cb,null);
+            return;
         }
-    }
-    fightcfg.item = role.fightcfg.item;
-    fight.fightcfg = fightcfg;
-    var list = [],matrix = [];
-    for(var i = 0; i < 300; i++){
-        var index = utils.getRand()%5;
-        var type = fightcfg.stone[index];
-        list.push(type.type);
-    }
-    for(var y = 0; y < 7; y++){
-        for(var x = 0; x < 6; x++){
-            var index = x*6+y*7;
-            var e = {x:x,y:y,type:list[index]};
-            matrix.push(e);
+        roleInfo.fight = utils.clone(consts.fightInfo);
+        var fight = roleInfo.fight;
+        fight.role = role.role;
+        fight.startTime = Date.now();
+        var stone = role.res.stone;
+        var fightcfg = {
+            stone:[0,0,0,0,0],
+            item:[0,0,0,0]
+        };
+        for(var i = 0; i < role.fightcfg.stone.length; i++){
+            var stoneIndex = role.fightcfg.stone[i]-1;
+            if(stoneIndex>=stone.length){
+                utils.invokeCallback(cb,null);
+                return;
+            }else{
+                fightcfg.stone.push(stone[stoneIndex]);
+            }
         }
-    }
-    fight.list = list;
-    fight.matrix = matrix;
-    roleInfo.fight = fight;
-    return roleInfo;
+        fightcfg.item = role.fightcfg.item;
+        fight.fightcfg = fightcfg;
+        var list = [],matrix = [];
+        for(var i = 0; i < 300; i++){
+            var index = utils.getRand()%5;
+            var type = fightcfg.stone[index];
+            list.push(type.type);
+        }
+        for(var y = 0; y < 7; y++){
+            for(var x = 0; x < 6; x++){
+                var index = x*6+y*7;
+                var e = {x:x,y:y,type:list[index]};
+                matrix.push(e);
+            }
+        }
+        fight.list = list;
+        fight.matrix = matrix;
+        roleInfo.fight = fight;
+        utils.invokeCallback(cb,roleInfo);
+        return;
+    });
 };
 
 /**
@@ -181,7 +197,7 @@ handler.startFight = function(msg, session, next){
         var levelId = msg.levelId;
         var level = utils.getItem(consts.schema.LEVEL,levelId,self,null);
         if(level){
-            var role = dataRemote.getRole(rid,null);
+            var role = self.app.rpc.user.dataRemote.getRole(rid,null);
             for(var i = 0; i < role.fightcfg.stone.length;i++){
                 if(!role.fightcfg.stone[i]){
                     next(null,{
@@ -192,28 +208,31 @@ handler.startFight = function(msg, session, next){
                     return;
                 }
             }
-            var roleInfo = createFight(role);
-            if(!roleInfo){
-                next(null,{
-                    msg:route,
-                    code:consts.code.E_DATA,
-                    data:null
-                });
-                return;
-            }
-            roleInfo.fight.levelType = 'common';
-            roleInfo.fight.level = level;
-            dataRemote.saveRoleInfo(roleInfo,null);
-            next(null,{
-                msg:route,
-                code:consts.code.SUCCESS,
-                data:{
-                    special:roleInfo.fight.special,
-                    specialMon:roleInfo.fight.specialMon,
-                    fightcfg:role.fightcfg,
-                    list:roleInfo.fight.list
+            //暂且按照原来的实现，此处未用到
+           /*createFight(role,self,function(roleInfo){
+                if(!roleInfo){
+                    next(null,{
+                        msg:route,
+                        code:consts.code.E_DATA,
+                        data:null
+                    });
+                    return;
                 }
-            });
+                roleInfo.fight.levelType = 'common';
+                roleInfo.fight.level = level;
+                self.app.rpc.user.dataRemote.saveRoleInfo('1',roleInfo,function(){
+                    next(null,{
+                        msg:route,
+                        code:consts.code.SUCCESS,
+                        data:{
+                            special:roleInfo.fight.special,
+                            specialMon:roleInfo.fight.specialMon,
+                            fightcfg:role.fightcfg,
+                            list:roleInfo.fight.list
+                        }
+                    });
+                });
+           });*/
         }else{
             next(null,{
                 msg:route,

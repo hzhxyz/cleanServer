@@ -160,6 +160,7 @@ remote.getRole = function(rid,cb){
     var tmp = null;
     if(role&&role.status!=consts.crud.D){
         tmp = utils.clone(role);
+        delete tmp.status;
     }
     if(cb){
         utils.invokeCallback(cb,tmp);
@@ -194,6 +195,28 @@ remote.updateRole = function(role,cb){
         }else{
             return consts.code.E_NOTHAS;
         }
+    }
+};
+
+/**
+ * 获取被派遣的宠物的信息
+ * */
+remote.getDispatch = function(rid,cb){
+    var role = this.getRole(rid,null);
+    var tmp = null;
+    if(role){
+        var pet = role.res.pet;
+        for(var i in pet){
+            if(pet[i].dispatch==consts.ny.Y){
+                tmp = utils.clone(pet[i]);
+                break;
+            }
+        }
+    }
+    if(cb){
+        utils.invokeCallback(cb,tmp);
+    }else{
+        return tmp;
     }
 };
 
@@ -460,6 +483,10 @@ remote.getInforms = function(rid,cb){
     var infs = informs[rid];
     if(infs){
         var tmp = utils.clone(infs);
+        for(var i in tmp){
+            delete tmp[i].status;
+            tmp[i].stime = utils.formatDate(tmp[i].stime);
+        }
         tmp.stime = utils.formatDate(tmp.stime);
         utils.invokeCallback(cb,tmp);
     }else{
@@ -495,8 +522,14 @@ remote.deleteInform = function(id,rid,cb){
 remote.getMessages = function(rid,cb){
     var messages = this.app.get(consts.cache.MESSAGES);
     var msgs = messages[rid];
-    var tmp = utils.clone(msgs);
-    utils.invokeCallback(cb,msgs);
+    var tmp = null;
+    if(msgs){
+        tmp = utils.clone(msgs);
+        for(var i in tmp){
+            delete tmp[i].status;
+        }
+    }
+    utils.invokeCallback(cb,tmp);
 };
 
 /*
@@ -735,9 +768,12 @@ remote.saveRoleInfo = function(roleInfo,cb){
 remote.getRoleInfo = function(rid,cb){
     var ris = this.app.get(consts.cache.ROLEINFO);
     var roleInfo = ris[rid];
-    var tmp = utils.clone(roleInfo);
+    var tmp = null;
+    if(roleInfo){
+        tmp = utils.clone(roleInfo);
+    }
     if(cb){
-        utils.invokeCallback(cb,roleInfo);
+        utils.invokeCallback(cb,tmp);
     }else{
         return tmp;
     }

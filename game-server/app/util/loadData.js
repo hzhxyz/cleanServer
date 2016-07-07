@@ -123,7 +123,9 @@ var loadInitbag = function(filename){
                 var stone = utils.clone(consts.stone);
                 stone.type = ini.id;
                 stone.isequip = 1;
-                bag.stone.push(stone);
+                var uuid = utils.uuidCompact().replace('-','');
+                stone.id = uuid;
+                bag.stone[uuid] = stone;
             }
         }else if(consts.preid.ITEM==ini.type){
             if(!bag.item[ini.id]){
@@ -135,7 +137,9 @@ var loadInitbag = function(filename){
                 var pet = utils.clone(consts.pet);
                 pet.type = ini.id;
                 pet.dispatch = 1;
-                bag.pet.push(pet);
+                var uuid = utils.uuidCompact().replace('-','');
+                pet.id = uuid;
+                bag.pet[uuid] = pet;
             }
         }
     }
