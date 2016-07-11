@@ -213,5 +213,14 @@ module.exports = {
     ny:{
         N:'N',
         Y:'Y'
+    },
+    specialMonType:{
+        ZOM:'zom',
+        MON:'mon'
+    },
+    levelType:{
+        COM:'common',
+        DAILY:'daily',
+        PLUNDER:'plunder'
     }
 };

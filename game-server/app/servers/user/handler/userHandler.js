@@ -120,6 +120,7 @@ handler.confirmRole = function(msg,session,next){
             initrole.res = initbag;
             initrole.role.type = type;
             initrole.role.rolename = rolename;
+            initrole.ltime = utils.formatDate(Date.now());
             for(var i in initbag.stone){
                 initrole.fightcfg.stone.push(i);
             }

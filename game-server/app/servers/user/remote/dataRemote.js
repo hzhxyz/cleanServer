@@ -406,9 +406,17 @@ remote.getFriends = function(rid,fid,cb){
             var r = getFriendInfo(role);
             fs.push(r);
         }
-        utils.invokeCallback(cb,fs);
+        if(cb){
+            utils.invokeCallback(cb,fs);
+        }else{
+            return fs;
+        }
     }else{
-        utils.invokeCallback(cb,null);
+        if(cb){
+            utils.invokeCallback(cb,null);
+        }else{
+            return null;
+        }
     }
 };
 
@@ -623,6 +631,33 @@ remote.sendMessage = function(msg,cb){
     utils.invokeCallback(cb);
 };
 
+/**
+ * 获取在某个时间点之后没有登录的friend
+ * */
+remote.getFriendOut = function(rid,time,cb){
+    var friends = this.getFriends(rid,null,null);
+    if(friends){
+        var fs = [];
+        for(var i = 0; i < friends.length; i++){
+            var ltime = friends[i].ltime;
+            if(utils.timediff(ltime,time)>0){
+                fs.push(friends[i]);
+            }
+        }
+        if(cb){
+            utils.invokeCallback(cb,fs);
+        }else{
+            return fs;
+        }
+    }else{
+        if(cb){
+            utils.invokeCallback(cb,null);
+        }else{
+            return null;
+        }
+    }
+};
+
 //--------------------缓存数据----------
 
 remote.addToken = function(uid,token,cb){
@@ -811,10 +846,14 @@ remote.getItem = function(tab,id,cb){
 
 remote.getCache = function(tab,cb){
     var cache = this.app.get(tab);
+    var tmp = null;
+    if(cache){
+        tmp = utils.clone(cache);
+    }
     if(cb){
-        utils.invokeCallback(cb,cache);
+        utils.invokeCallback(cb,tmp);
     }else{
-        return cache;
+        return tmp;
     }
 };
 

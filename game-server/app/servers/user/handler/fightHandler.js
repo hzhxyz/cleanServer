@@ -1,5 +1,6 @@
 var logger = require('pomelo-logger').getLogger(__filename);
 var consts = require('../../../util/consts');
+var serviceDao = require('../../../dao/serviceDao');
 var utils = require('../../../util/utils');
 module.exports = function(app) {
     return new Handler(app);
@@ -154,18 +155,18 @@ var createFight = function(role,self,cb){
             item:[0,0,0,0]
         };
         for(var i = 0; i < role.fightcfg.stone.length; i++){
-            var stoneIndex = role.fightcfg.stone[i]-1;
-            if(stoneIndex>=stone.length){
+            var stoneId = role.fightcfg.stone[i];
+            if(!stoneId){
                 utils.invokeCallback(cb,null);
                 return;
             }else{
-                fightcfg.stone.push(stone[stoneIndex]);
+                fightcfg.stone.push(stone[stoneId]);
             }
         }
         fightcfg.item = role.fightcfg.item;
         fight.fightcfg = fightcfg;
         var list = [],matrix = [];
-        for(var i = 0; i < 300; i++){
+        /*for(var i = 0; i < 300; i++){
             var index = utils.getRand()%5;
             var type = fightcfg.stone[index];
             list.push(type.type);
@@ -176,12 +177,86 @@ var createFight = function(role,self,cb){
                 var e = {x:x,y:y,type:list[index]};
                 matrix.push(e);
             }
-        }
+        }*/
         fight.list = list;
         fight.matrix = matrix;
         roleInfo.fight = fight;
         utils.invokeCallback(cb,roleInfo);
         return;
+    });
+};
+
+var getType4 = function(mapId,self,cb){
+    utils.getTemplate(consts.schema.ACTIVITY,self,function(activity){
+        utils.getTemplate(consts.schema.TYPE4,self,function(type4){
+            var now = new Date();
+            var time = now.getTime();
+            var w = now.getDay();//5,6,0会出现神兽
+            var type4s = [];
+            for(var i in activity){
+                var act = activity[i];
+                if(act.closed==1&&act.type==4){
+                    var st = utils.formatDate(act.startDate+' '+act.startTime);
+                    var et = utils.formatDate(act.endDate+' '+act.endTime);
+                    var t4 = type4[act.typeDID];
+                    if(act.loopType==0) {//无重复活动
+                        if(Date.parse(st)<time&&Date.parse(et)>time){
+                            if (t4.mapid == mapId) {
+                                type4s.push({actId: act.id, t4: t4});
+                            }
+                        }
+                    }else if(act.loopType==1){//每日重复
+                        var stt = utils.formatDate(now).split(' ')[0]+' '+st.split(' ')[1];
+                        var ett = utils.formatDate(now).split(' ')[0]+' '+et.split(' ')[1];
+                        if(Date.parse(stt)<time&&Date.parse(ett)>time) {
+                            if (t4.mapid == mapId) {
+                                type4s.push({actId: act.id, t4: t4});
+                            }
+                        }
+                    }else if(act.loopType==2){//每周重复
+                        var ws = [];
+                        var tmp = Date.parse(st);
+                        while(tmp<Date.parse(et)){
+                            var nw = new Date(tmp).getDay();
+                            ws.push(nw);
+                            tmp = tmp+consts.time.date;
+                        }
+                        var wss = [];
+                        for(var j = 0; j < ws.length; j++){
+                            var b = false;
+                            for(var k = 0; k < wss.length; k++){
+                                if(ws[j]==wss[k]){
+                                    b = true;
+                                    break;
+                                }
+                            }
+                            if(!b){
+                                wss.push(ws[j]);
+                            }
+                        }
+                        for(var j = 0; j < wss.length; j++){
+                            if(w==wss[j]){
+                                type4s.push({actId: act.id, t4: t4});
+                                break;
+                            }
+                        }
+                    }else if(act.loopType==3){//每月重复
+                        var sd = utils.formatDate(now,'yyyy-MM-dd').substr(0,8)+
+                            utils.formatDate(act.startDate,'yyyy-MM-dd').substr(8,2);
+                        sd = sd+' '+act.startTime;//本月的开始时间
+                        var ed = utils.formatDate(now,'yyyy-MM-dd').substr(0,8)+
+                            utils.formatDate(act.endDate,'yyyy-MM-dd').substr(8,2);
+                        ed = ed+' '+act.endTime;//本月的结束时间
+                        if(Date.parse(sd)<time&&Date.parse(ed)>time) {
+                            if (t4.mapid == mapId) {
+                                type4s.push({actId: act.id, t4: t4});
+                            }
+                        }
+                    }
+                }
+            }
+            utils.invokeCallback(cb,type4s);
+        });
     });
 };
 
@@ -208,8 +283,7 @@ handler.startFight = function(msg, session, next){
                     return;
                 }
             }
-            //暂且按照原来的实现，此处未用到
-           /*createFight(role,self,function(roleInfo){
+            createFight(role,self,function(roleInfo){
                 if(!roleInfo){
                     next(null,{
                         msg:route,
@@ -218,21 +292,65 @@ handler.startFight = function(msg, session, next){
                     });
                     return;
                 }
-                roleInfo.fight.levelType = 'common';
+                roleInfo.fight.levelType = consts.levelType.COM;
                 roleInfo.fight.level = level;
-                self.app.rpc.user.dataRemote.saveRoleInfo('1',roleInfo,function(){
-                    next(null,{
-                        msg:route,
-                        code:consts.code.SUCCESS,
-                        data:{
-                            special:roleInfo.fight.special,
-                            specialMon:roleInfo.fight.specialMon,
-                            fightcfg:role.fightcfg,
-                            list:roleInfo.fight.list
+                //TODO 神兽如何遇见需要策划更详细的文档
+                getType4(level.mapid,self,function(type4s){
+                    var rand = Math.random();
+                    var mon = {};
+                    if(type4s&&type4s.length>0){
+                        serviceDao.selectSmon(rid,function(res){
+                            if(res&&res.length>0){
+                                for(var i = 0; i < res.length; i++){
+                                    for(var j = 0; j < type4s.length; j++){
+                                        if(res[i].actiId==type4s[j].actId&&res[i].mapId==level.mapid&&res[i].type==type4s[j].t4.p1&&res[i].capture==1){
+                                            type4s[j].has = 1;
+                                            continue;
+                                        }
+                                    }
+                                }
+                                for(var i = 0; i < type4s.length; i++){
+                                    if(type4s[i].has&&rand*100<=type4s.t4.prob){
+                                        mon = type4s[i];
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    //------------------------僵尸判断开始
+                    if(utils.isBlank(mon)){//没有遇到神兽
+                        if(rand<=0.3){
+                            var diff = Date.now()-consts.time.date*1;
+                            self.app.rpc.user.dataRemote.getFriendOut(rid,diff,function(friends){
+                                if(friends&&friends.length>0){
+                                    rand = Math.random();
+                                    var index = Math.floor(friends.length*rand);
+                                    var friend = friends[index];
+                                    roleInfo.fight.special = consts.specialMonType.ZOM;
+                                    roleInfo.fight.specialMon = {roleId:friend.id,level:friend.level,type:friend.type};
+                                }else{
+                                    //什么都没有遇到，special和specialMon都是null
+                                }
+                            });
+                        }else{
+                            //什么都没有遇到，special和specialMon都是null
                         }
+                    }else{
+                        roleInfo.fight.special = consts.specialMonType.MON;
+                        roleInfo.fight.specialMon = mon;
+                    }
+                    //-----------------------僵尸判断结束
+                    self.app.rpc.user.dataRemote.saveRoleInfo(roleInfo,function(){
+                        var data = roleInfo.fight.special?roleInfo.fight.special==consts.specialMonType.MON?{id:roleInfo.fight.specialMon.id}:roleInfo.fight.specialMon:null;
+                        next(null,{
+                            msg:route,
+                            code:consts.code.SUCCESS,
+                            data:{type:roleInfo.fight.special,data:data}
+                        });
                     });
                 });
-           });*/
+            });
         }else{
             next(null,{
                 msg:route,
@@ -258,6 +376,15 @@ handler.fightResult = function(msg, session, next){
     var self = this;
     var rid = session.get(consts.sys.RID);
     if(msg.check==0){
+        var result = msg.result;
+        var levelId = msg.levelId;
+        var num = msg.num;
+        var items = msg.items;
+        self.app.rpc.user.dataRemote.getRoleInfo('1',rid,function(roleInfo){
+            if(roleInfo){
+                var fight = roleInfo.fight;
+            }
+        });
     }else{
         next(null,{
             msg:route,

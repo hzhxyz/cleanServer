@@ -38,6 +38,8 @@ handler.connect = function(msg, session, next){
                             if(role){
                                 session.set(consts.sys.RID,role.id);
                                 session.push(consts.sys.RID);
+                                role.ltime = utils.formatDate(Date.now());
+                                self.app.rpc.user.dataRemote.updateRole('1',role,function(){});
                                 next(null,{
                                     msg:route,
                                     code:consts.code.SUCCESS,
