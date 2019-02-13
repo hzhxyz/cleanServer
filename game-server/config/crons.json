@@ -14,7 +14,8 @@
         "id": "persist",
         "time": "1 */5 * * * *",
         "action": "dataCron.persist"
-      }
+      },
+      {"1": "1"}
     ]
   }
 }
